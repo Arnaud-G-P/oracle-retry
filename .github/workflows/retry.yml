@@ -36,17 +36,19 @@ jobs:
           OCI_IMAGE_ID: ${{ secrets.OCI_IMAGE_ID }}
           OCI_SUBNET_ID: ${{ secrets.OCI_SUBNET_ID }}
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           COUNT=$(oci compute instance list \
             --compartment-id $OCI_TENANCY \
             --lifecycle-state RUNNING \
             --query "length(data)" \
             --raw-output 2>/dev/null || echo "0")
+          COUNT=${COUNT:-0}
           if [ "$COUNT" -gt "0" ]; then
             echo "Instance deja active."
             exit 0
           fi
-          oci compute instance launch \
+          if oci compute instance launch \
             --compartment-id $OCI_TENANCY \
             --availability-domain gFWC:EU-PARIS-1-AD-1 \
             --shape VM.Standard.A1.Flex \
@@ -55,6 +57,12 @@ jobs:
             --subnet-id $OCI_SUBNET_ID \
             --assign-public-ip true \
             --display-name mon-serveur \
-            --metadata "{\"ssh_authorized_keys\": \"$SSH_PUBLIC_KEY\"}" \
-          && echo "SUCCES!" \
-          || echo "Pas de capacite"
+            --metadata "{\"ssh_authorized_keys\": \"$SSH_PUBLIC_KEY\"}" 2>/dev/null; then
+            echo "SUCCES!"
+            gh issue create \
+              --title "Serveur Oracle cree !" \
+              --body "Ton instance ARM est prete. Lance le setup." \
+              --repo Arnaud-G-P/oracle-retry
+          else
+            echo "Pas de capacite"
+          fi
