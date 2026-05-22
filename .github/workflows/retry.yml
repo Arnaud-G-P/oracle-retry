@@ -1,1 +1,6 @@
-.github/workflows/retry.yml
+name: Oracle Instance Retry
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
